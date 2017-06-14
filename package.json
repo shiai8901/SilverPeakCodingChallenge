@@ -1,0 +1,25 @@
+{
+  "name": "client-server",
+  "version": "1.0.0",
+  "description": "silver peak coding challenge",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shiai8901/SilverPeakCodingChallenge.git"
+  },
+  "keywords": [
+    "server",
+    "node",
+    "client"
+  ],
+  "author": "Ai Shi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shiai8901/SilverPeakCodingChallenge/issues"
+  },
+  "homepage": "https://github.com/shiai8901/SilverPeakCodingChallenge#readme"
+}
