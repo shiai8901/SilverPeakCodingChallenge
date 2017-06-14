@@ -15,6 +15,7 @@
 
 const http = require('http');
 const urlParser = require('url');
+const request = require('request');
 
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
@@ -67,14 +68,50 @@ function validateInput(input) {
 }
 
 /**
- * do the test on sites
+ * [{site: string, avg: number, max: number, min: number, startTestTime: string, endTestTime: string, interations: number}]
  * @param {Array} sitesToTest
  * @param {Number} iterations
  */
-function test(sitesToTest, iterations) {
+function test(sitesToTest, iterations, callback) {
+	let results = [];
 
+	sitesToTest.forEach((url) => {
+
+		let startTestTime = (new Date()).getTime();
+		let endTestTime = getURL(url, iterations, generateEndTime);
+		let result = {site: url, startTestTime: startTestTime, endTestTime: endTestTime};
+
+		results.push(result);
+	});
+
+	callback(results);
 }
 
+function generateEndTime() {
+	return (new Date()).getTime();
+}
+
+function getURL(url, iterations, callback) {
+	var n = iterations;
+	var promises = [];		
+	var promise = request({
+			uri: url,
+			method: "GET",
+			timeout: 10000,
+			followRedirect: true,
+			maxRedirects: 10
+		}, function(error, response, body) {
+			// console.log(body);
+		});
+	while (n > 0) {
+		promises.push(promise);
+		n--;
+	}
+
+	return Promise.all(promises).then((values) => {
+		return callback();
+	});
+}
 /**
  * update test status when test is completed
  * @param {String} testHandle
@@ -110,7 +147,7 @@ function removeTestResultFromMemory() {
 /**
  * remove test result on dist every 24 hours
  */
-function remvoeTestResultFromDisk() {
+function removeTestResultFromDisk() {
 
 }
 
@@ -145,8 +182,8 @@ const requestListener = function(req, res) {
 				testInfo[testHandle] = {sites: input.sitesToTest, iterations: input.iterations, result: [], status: "started"};
 				testHandles.push(testHandle);
 				// run the function on the input;
-				// test(input.sitesToTest, input.iterations) {
-				// }				
+				test(input.sitesToTest, input.iterations) {
+				}				
 			} else {
 				res.writeHead(406, headers);
 				res.end('Input format is not acceptable.');
