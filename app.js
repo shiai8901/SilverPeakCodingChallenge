@@ -16,14 +16,6 @@
 const http = require('http');
 const urlParser = require('url');
 
-var headers = {
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'access-control-allow-headers': 'content-type, accept',
-  'access-control-max-age': 10, // Seconds.
-  'Content-Type': 'application/json'
-};
-
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
 
@@ -44,7 +36,34 @@ function generateTestHandle() {
  * @return {Boolean} is validate input
  */
 function validateInput(input) {
+	try { 
+		input = JSON.parse(input);
+		if (typeof input !== 'object' || 
+			input === null ||
+			Array.isArray(input) ||
+			input[sitesToTest] === undefined || 
+			!Array.isArray(input[sitesToTest]) || 
+			input[iterations] === undefined || 
+			typeof input[iterations] !== "number" || 
+			!Number.isInteger(input[iterations]) || 
+			input[iterations] < 1) {
+			return false;
+		}
 
+		var pattern = new RegExp('^(https?:\/\/)?'+ // protocol
+			'((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|'+ // domain name
+			'((\d{1,3}\.){3}\d{1,3}))'+ // OR ip (v4) address
+			'(\:\d+)?(\/[-a-z\d%_.~+]*)*'+ // port and path
+			'(\?[;&a-z\d%_.~+=-]*)?'+ // query string
+			'(\#[-a-z\d_]*)?$','i'); // fragment locater
+
+		for (var i = 0; i < input[sitesToTest].length; i++) {
+			if (!pattern.test(input[sitesToTest][i])) return false;
+		}
+		return true;
+	} catch (e) {
+		return false;
+	}	
 }
 
 /**
@@ -77,16 +96,31 @@ function updateTestResult(testHandle, result) {
 /**
  * save test result to disk
  */
-function saveTestResult(testHandle, result, callback) {
+function saveTestResultToDisk(testHandle, result, callback) {
 
 }
 
 /**
- * remove test result every 24 hours
+ * remove test result on memory every 24 hours
  */
-function removeTestResultWorker() {
+function removeTestResultFromMemory() {
 
 }
+
+/**
+ * remove test result on dist every 24 hours
+ */
+function remvoeTestResultFromDisk() {
+
+}
+
+var headers = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'access-control-allow-headers': 'content-type, accept',
+  'access-control-max-age': 10, // Seconds.
+  'Content-Type': 'application/json'
+};
 
 const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
