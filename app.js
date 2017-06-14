@@ -15,7 +15,8 @@
 
 const http = require('http');
 const urlParser = require('url');
-
+const request = require('request');
+const filepath = 'allTests.txt';
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
 
@@ -67,14 +68,53 @@ function validateInput(input) {
 }
 
 /**
- * do the test on sites
+ * [{site: string, avg: number, max: number, min: number, startTestTime: string, endTestTime: string, interations: number}]
  * @param {Array} sitesToTest
  * @param {Number} iterations
  */
-function test(sitesToTest, iterations) {
+function test(testHandle, sitesToTest, iterations, callback) {
+	
+	var promises = sitesToTest.map((url) => {
+		let startTestTime = (new Date()).getTime();
+		return {site: url, startTestTime: startTestTime, endTestTime: getURL(url, iterations, generateEndTime)};
+	});
+
+	Promise.all(promises).then((result) => {
+		let save = {};
+		save[testHandle] = results;
+
+		updateTestStatus(testHandle, "finished");
+		updateTestResult(testHandle, result);
+		callback(save);
+	});
 
 }
 
+function generateEndTime() {
+	return (new Date()).getTime();
+}
+
+function getURL(url, iterations, callback) {
+	var n = iterations;
+	var promises = [];		
+	var promise = request({
+			uri: url,
+			method: "GET",
+			timeout: 10000,
+			followRedirect: true,
+			maxRedirects: 10
+		}, function(error, response, body) {
+			// console.log(body);
+		});
+	while (n > 0) {
+		promises.push(promise);
+		n--;
+	}
+
+	return Promise.all(promises).then((values) => {
+		return callback();
+	});
+}
 /**
  * update test status when test is completed
  * @param {String} testHandle
@@ -96,8 +136,10 @@ function updateTestResult(testHandle, result) {
 /**
  * save test result to disk
  */
-function saveTestResultToDisk(testHandle, result, callback) {
-
+function saveTestResultToDisk(filepath, result, callback) {
+	fs.appendFile(filepath, result + '\n', function(err, file) {
+		callback();
+	});
 }
 
 /**
@@ -110,7 +152,7 @@ function removeTestResultFromMemory() {
 /**
  * remove test result on dist every 24 hours
  */
-function remvoeTestResultFromDisk() {
+function removeTestResultFromDisk() {
 
 }
 
@@ -145,8 +187,9 @@ const requestListener = function(req, res) {
 				testInfo[testHandle] = {sites: input.sitesToTest, iterations: input.iterations, result: [], status: "started"};
 				testHandles.push(testHandle);
 				// run the function on the input;
-				// test(input.sitesToTest, input.iterations) {
-				// }				
+				test(input.sitesToTest, input.iterations, function(result) {
+					saveTestResultToDisk(filepath, result);
+				});
 			} else {
 				res.writeHead(406, headers);
 				res.end('Input format is not acceptable.');
