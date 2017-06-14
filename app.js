@@ -16,7 +16,7 @@
 const http = require('http');
 const urlParser = require('url');
 const request = require('request');
-
+const filepath = 'allTests.txt';
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
 
@@ -72,19 +72,22 @@ function validateInput(input) {
  * @param {Array} sitesToTest
  * @param {Number} iterations
  */
-function test(sitesToTest, iterations, callback) {
-	let results = [];
-
-	sitesToTest.forEach((url) => {
-
+function test(testHandle, sitesToTest, iterations, callback) {
+	
+	var promises = sitesToTest.map((url) => {
 		let startTestTime = (new Date()).getTime();
-		let endTestTime = getURL(url, iterations, generateEndTime);
-		let result = {site: url, startTestTime: startTestTime, endTestTime: endTestTime};
-
-		results.push(result);
+		return {site: url, startTestTime: startTestTime, endTestTime: getURL(url, iterations, generateEndTime)};
 	});
 
-	callback(results);
+	Promise.all(promises).then((result) => {
+		let save = {};
+		save[testHandle] = results;
+
+		updateTestStatus(testHandle, "finished");
+		updateTestResult(testHandle, result);
+		callback(save);
+	});
+
 }
 
 function generateEndTime() {
@@ -133,8 +136,10 @@ function updateTestResult(testHandle, result) {
 /**
  * save test result to disk
  */
-function saveTestResultToDisk(testHandle, result, callback) {
-
+function saveTestResultToDisk(filepath, result, callback) {
+	fs.appendFile(filepath, result + '\n', function(err, file) {
+		callback();
+	});
 }
 
 /**
@@ -182,8 +187,9 @@ const requestListener = function(req, res) {
 				testInfo[testHandle] = {sites: input.sitesToTest, iterations: input.iterations, result: [], status: "started"};
 				testHandles.push(testHandle);
 				// run the function on the input;
-				test(input.sitesToTest, input.iterations) {
-				}				
+				test(input.sitesToTest, input.iterations, function(result) {
+					saveTestResultToDisk(filepath, result);
+				});
 			} else {
 				res.writeHead(406, headers);
 				res.end('Input format is not acceptable.');
