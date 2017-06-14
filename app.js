@@ -24,6 +24,17 @@ var headers = {
   'Content-Type': 'application/json'
 };
 
+// format is {testHandleName: {result: [], status: ""}}
+var testHandles = {};
+
+function validateInput(input) {
+
+}
+
+function test(sitesToTest, iterations) {
+
+}
+
 const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
 	var method = req.method;
@@ -33,6 +44,8 @@ const requestListener = function(req, res) {
 	if (method === 'POST') {
 		// input format {sitesToTest: [http://www.google.com, http://cnn.com, http://espn.com], iterations: 10}
 		var input = '';
+		// need to generate unique testHandle
+		var testHandle = ;
 		req.on('error', function(err) {
 			console.log('Error: ', err.message);
 		});
@@ -41,12 +54,18 @@ const requestListener = function(req, res) {
 		});	
 		req.on('end', function() {
 			console.log(input);
-			// run the function on the input;
-			// function test(input) {
-			// }
+			if (validateInput(input)) {
+				testHandles[testHandle] = {result: [], status: "started"};
+				// run the function on the input;
+				// test(input.sitesToTest, input.iterations) {
+				// }				
+			} else {
+				res.writeHead(406, headers);
+				res.end('Input format is not acceptable.');
+			}
 		});
 		res.writeHead(201, headers);
-		res.end({testHandel:});
+		res.end({testHandle: testHandle, status: testHandles[testHandle].status});
 	} else if (method = 'GET') {
 
 	}
@@ -62,5 +81,5 @@ const requestListener = function(req, res) {
 //   res.end('Hello, World!\n');
 // }
 
-var server = http.createServer(requestListener);
+const server = http.createServer(requestListener);
 server.listen(8080);
