@@ -169,14 +169,16 @@ function saveTestResultToDisk(filepath, result, callback) {
  * remove test result on memory every 24 hours
  */
 function removeTestResultFromMemory(listOfItems) {
+	listOfItems.forEach((item) => {
 
+	})
 }
 
 /**
  * remove test result on dist every 24 hours
  */
 function removeTestResultFromDisk(filepath) {
-
+	fs.writeFile(filepath, '', function(){console.log('done')})
 }
 
 var headers = {
