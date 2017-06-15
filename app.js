@@ -16,7 +16,30 @@
 const http = require('http');
 const urlParser = require('url');
 const request = require('request');
+
 const filepath = 'allTests.txt';
+const cleanDataTimeInterval = 24 * 60 * 60 * 1000;
+let nextClearDataTime = (new Date()).getTime() + cleanDataTimeInterval
+let countdown;
+
+function timer(milliseconds) {
+	clearInterval(countdown);
+	
+	countdown = setInterval(() => {
+		const milliSecondsLeft = nextClearDataTime - Date.now();
+		if (milliSecondsLeft < 0) {
+			clearInterval(countdown);
+			nextClearDataTime += cleanDataTimeInterval;
+			timer(nextClearDataTime);
+			removeTestResultFromMemory([testInfo, testHandles]);
+			removeTestResultFromDisk(filepath);
+			return;
+		} 
+	}, 1000);
+}
+
+timer(nextClearDataTime);
+
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
 
@@ -145,15 +168,21 @@ function saveTestResultToDisk(filepath, result, callback) {
 /**
  * remove test result on memory every 24 hours
  */
-function removeTestResultFromMemory() {
-
+function removeTestResultFromMemory(listOfItems) {
+	listOfItems.forEach((item) => {
+		if (Array.isArray(item)) {
+			item = [];
+		} else if (typeof item === 'object') {
+			item = {};
+		}
+	});
 }
 
 /**
  * remove test result on dist every 24 hours
  */
-function removeTestResultFromDisk() {
-
+function removeTestResultFromDisk(filepath) {
+	fs.writeFile(filepath, '', function(){console.log('done')})
 }
 
 var headers = {
