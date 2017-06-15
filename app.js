@@ -170,8 +170,12 @@ function saveTestResultToDisk(filepath, result, callback) {
  */
 function removeTestResultFromMemory(listOfItems) {
 	listOfItems.forEach((item) => {
-
-	})
+		if (Array.isArray(item)) {
+			item = [];
+		} else if (typeof item === 'object') {
+			item = {};
+		}
+	});
 }
 
 /**
