@@ -2,14 +2,15 @@
   "name": "client-server",
   "version": "1.0.0",
   "description": "silver peak coding challenge",
-  "main": "index.js",
+  "main": "client.js",
   "scripts": {
     "start": "node app.js",
+    "build": "node client.js",
     "test": "test"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shiai8901/SilverPeakCodingChallenge.git"
+    "url": "https://github.com/shiai8901/SilverPeakCodingChallenge.git"
   },
   "keywords": [
     "server",
@@ -21,5 +22,8 @@
   "bugs": {
     "url": "https://github.com/shiai8901/SilverPeakCodingChallenge/issues"
   },
-  "homepage": "https://github.com/shiai8901/SilverPeakCodingChallenge#readme"
+  "homepage": "https://github.com/shiai8901/SilverPeakCodingChallenge#readme",
+  "dependencies": {
+    "request": "^2.81.0"
+  }
 }
