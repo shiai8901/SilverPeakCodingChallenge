@@ -1,0 +1,13 @@
+# Notes
+  - The specification does not mention about input validation and error handling. Please do your best to make the application robust from errant datq input and deal with errors.
+  - You may want to write your application as HTTP firs and later modify it to deal with HTTPS.
+  - You must write server code in Node.js.
+    - Deliverables are:
+      - app.js (all code in this file)
+      - package.json
+  - You must write client code in Java.
+    - Deliverables are:
+      - client.java (all code in this file)
+  - Your code must run.
+  - Your code should have good comments.
+  - Your code should have good function and variable names.
