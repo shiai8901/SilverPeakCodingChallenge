@@ -256,4 +256,5 @@ const requestListener = function(req, res) {
 // }
 
 const server = http.createServer(requestListener);
+console.log("listening on 8080");
 server.listen(8080);
