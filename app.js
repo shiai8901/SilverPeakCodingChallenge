@@ -199,9 +199,10 @@ var headers = {
 
 const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
+	var queryObject = urlParser.parse(req.url,true).query;
 	var method = req.method;
 
-	console.log('requestListener: url = ', url, 'method = ', method);
+	console.log('requestListener: url = ', url, 'method = ', method, 'queryObject = ', queryObject.testHandle);
 
 	if (method === 'POST') {
 		var input = '';
@@ -238,13 +239,14 @@ const requestListener = function(req, res) {
 			res.writeHead(200, headers);
 			res.end(JSON.stringify({handles: testHandles}));
 		} else if (url === "/testStatus") {
-			var handle = req.data.testHandle;
+			var handle = queryObject.testHandle;
+
 			if (testInfo[handle] === undefined) {
 				res.writeHead(404, headers);
 				res.end('Cannot find the test with the testHandle = ' + handle);
 			} else {
 				res.writeHead(200, headers);
-				res.end({testHandle: handle, status: testInfo[handle].status});
+				res.end(testInfo[handle].status);
 			}
 		} else if (url === "/testResults") {
 			var handle = req.data.testHandle;

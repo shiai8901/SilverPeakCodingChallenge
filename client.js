@@ -25,7 +25,7 @@ CLI.prototype.testSites = function(sites, iterations) {
 	  sitesToTest: sites,
 	  iterations: iterations
 	});
-	console.log("testSites in client: ", JSON.parse(postData));
+	// console.log("testSites in client: ", JSON.parse(postData));
 
 	var options = {
 		hostname: hostname,
@@ -57,11 +57,11 @@ CLI.prototype.testSites = function(sites, iterations) {
 }
 
 CLI.prototype.getStatus = function(handle) {
-	console.log("getStatus: ", handle);
+	// console.log("getStatus: ", handle);
 	var options = {
 	  hostname: hostname,
 	  port: port,
-	  path: '/getStatus?' + handle,
+	  path: '/testStatus?testHandle=' + handle,
 	  method: 'GET'
 	};
 
@@ -80,7 +80,7 @@ CLI.prototype.getStatus = function(handle) {
 	})
 	.on('error', (e) => {
 			console.log(`problem with request: ${e.message}`);
-		})
+	})
 	.end();
 }
 
@@ -89,7 +89,7 @@ CLI.prototype.getResults = function(handle) {
 }
 
 CLI.prototype.getAll = function() {
-	console.log("getAll");
+	// console.log("getAll");
 	var options = {
 		hostname: hostname,
 		port: port,
@@ -112,7 +112,7 @@ CLI.prototype.getAll = function() {
 	})
 	.on('error', (e) => {
 			console.log(`problem with request: ${e.message}`);
-		})
+	})
 	.end();
 }
 
