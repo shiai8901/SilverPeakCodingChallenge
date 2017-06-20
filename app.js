@@ -16,6 +16,8 @@
 const http = require('http');
 const urlParser = require('url');
 const request = require('request');
+const fs = require('fs');
+
 
 const filepath = 'allTests.txt';
 const cleanDataTimeInterval = 24 * 60 * 60 * 1000;
@@ -65,7 +67,7 @@ function generateTestHandle() {
 function validateInput(input) {
 	try { 
 		input = JSON.parse(input);
-		console.log("input in validation --------> ", input);
+		// console.log("input in validation --------> ", input);
 		if (typeof input !== 'object' || 
 			input === null ||
 			Array.isArray(input) ||
@@ -101,7 +103,7 @@ function validateInput(input) {
  */
 function test(testHandle, sitesToTest, iterations, callback) {
 
-	console.log('test -----> ', testHandle, sitesToTest, iterations, callback);
+	// console.log('test -----> ', testHandle, sitesToTest, iterations, callback);
 	var promises = [];
 	sitesToTest.forEach((site) => {
 		var promise = new Promise((resolve, reject) => {
@@ -110,14 +112,15 @@ function test(testHandle, sitesToTest, iterations, callback) {
 		promises.push(promise);
 	});
 	var results = [];
-	Promise.all(promises).then((values) => {
+	return Promise.all(promises).then((values) => {
 		values.forEach((site) => {
 			results.push(analyzeRawResults(site.url, iterations, site.testStartTime, site.respTimes));
 		});
 		return results;
 	})
 	.then((results) => {
-		callback(results);
+		// callback(results);
+		return results;
 	});
 		
 }
@@ -183,8 +186,6 @@ function getURL(url, iterations, callback) {
 		iterations--;
 	}
 	return Promise.all(promises).then((values) => {		
-		// console.log(url, respTimes);
-
 		return {url: url, testStartTime: testStartTime, respTimes: respTimes};
 	});
 }
@@ -209,9 +210,11 @@ function updateTestResult(testHandle, result) {
 /**
  * save test result to disk
  */
-function saveTestResultToDisk(filepath, result, callback) {
-	fs.appendFile(filepath, result + '\n', function(err, file) {
-		callback();
+function saveTestResultToDisk(filepath, result) {
+
+	fs.appendFile(filepath, result + '\n', (err, file) => {
+		if (err) return err;
+		if (file) return file;
 	});
 }
 
@@ -267,10 +270,28 @@ const requestListener = function(req, res) {
 				testHandles.push(testHandle);
 
 				// run the function on the input;
-				test(testHandle, input.sitesToTest, input.iterations, function(value) {
-				// 	saveTestResultToDisk(filepath, result);
-					console.log('test value', value);
-				});
+				Promise.resolve(test(testHandle, input.sitesToTest, input.iterations))
+					.then(results => {
+						updateTestResult(testHandle, results);
+						updateTestStatus(testHandle, "finished");
+						
+						saveTestResultToDisk(filepath, JSON.stringify({handle: testHandle, data: results}));
+					})
+					.then(data => {
+						console.log('data: ', data);
+					})
+					.catch(reject => {
+						console.log('reject: ', reject);
+					});
+
+
+
+				// test(testHandle, input.sitesToTest, input.iterations, function(value) {
+				// 	console.log('test value', value);
+				// 	saveTestResultToDisk(filepath, value, (data) => {
+				// 		console.log(data);
+				// 	});
+				// });
 				res.writeHead(201, headers);
 				res.end(JSON.stringify({testHandle: testHandle, status: testInfo[testHandle].status}));
 			} else {
