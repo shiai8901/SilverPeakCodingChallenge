@@ -234,10 +234,10 @@ const requestListener = function(req, res) {
 			}
 		});
 	} else if (method = 'GET') {
-		if (url === 'allTests') {
+		if (url === '/allTests') {
 			res.writeHead(200, headers);
 			res.end(JSON.stringify({handles: testHandles}));
-		} else if (url === "testStatus") {
+		} else if (url === "/testStatus") {
 			var handle = req.data.testHandle;
 			if (testInfo[handle] === undefined) {
 				res.writeHead(404, headers);
@@ -246,7 +246,7 @@ const requestListener = function(req, res) {
 				res.writeHead(200, headers);
 				res.end({testHandle: handle, status: testInfo[handle].status});
 			}
-		} else if (url === "testResults") {
+		} else if (url === "/testResults") {
 			var handle = req.data.testHandle;
 			if (testInfo[handle] === undefined) {
 				res.writeHead(404, headers);

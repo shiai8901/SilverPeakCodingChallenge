@@ -39,10 +39,7 @@ CLI.prototype.testSites = function(sites, iterations) {
 	};
 
 	var req = http.request(options, (res) => {
-		// console.log(`STATUS: ${res.statusCode} \n`, ` HEADERS: ${JSON.stringify(res.headers)}`);
-		// res.setEncoding('utf8');
 		res.on('data', (chunk) => {
-			// console.log(`BODY: ${chunk}`);
 			console.log("test " + JSON.parse(chunk).status + ". Test handle: " + JSON.parse(chunk).testHandle);
 		});
 		res.on('end', () => {
@@ -54,7 +51,6 @@ CLI.prototype.testSites = function(sites, iterations) {
 	  console.log(`problem with request: ${e.message}`);
 	});
 
-	// write data to request body
 	req.write(postData);
 	req.end();
 
@@ -62,6 +58,30 @@ CLI.prototype.testSites = function(sites, iterations) {
 
 CLI.prototype.getStatus = function(handle) {
 	console.log("getStatus: ", handle);
+	var options = {
+	  hostname: hostname,
+	  port: port,
+	  path: '/getStatus?' + handle,
+	  method: 'GET'
+	};
+
+	http.request(options, (res) => {
+		var str = '';
+
+		res.on('data', function (chunk) {
+			str += chunk;
+		});
+		res.on('end', function () {
+			console.log(str);
+		});
+		res.on('error', (e) => {
+			console.log(`problem with response: ${e.message}`);
+		});
+	})
+	.on('error', (e) => {
+			console.log(`problem with request: ${e.message}`);
+		})
+	.end();
 }
 
 CLI.prototype.getResults = function(handle) {
@@ -70,6 +90,30 @@ CLI.prototype.getResults = function(handle) {
 
 CLI.prototype.getAll = function() {
 	console.log("getAll");
+	var options = {
+		hostname: hostname,
+		port: port,
+		path: '/allTests',
+		method: 'GET'
+	};
+
+	http.request(options, (res) => {
+		var str = '';
+
+		res.on('data', function (chunk) {
+			str += chunk;
+		});
+		res.on('end', function () {
+			console.log("All handles: " + JSON.parse(str).handles);
+		});
+		res.on('error', (e) => {
+			console.log(`problem with response: ${e.message}`);
+		});
+	})
+	.on('error', (e) => {
+			console.log(`problem with request: ${e.message}`);
+		})
+	.end();
 }
 
 CLI.prototype.help = function() {
