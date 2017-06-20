@@ -50,8 +50,11 @@ var testHandles = [];
  * generate unique handle
  * @return {String} handle
  */
-function generateTestHandle() {
 
+let count = 0;
+function generateTestHandle() {
+	count++;
+	return count;
 }
 
 /**
@@ -62,6 +65,7 @@ function generateTestHandle() {
 function validateInput(input) {
 	try { 
 		input = JSON.parse(input);
+		console.log("input in validation --------> ", input);
 		if (typeof input !== 'object' || 
 			input === null ||
 			Array.isArray(input) ||
@@ -86,7 +90,7 @@ function validateInput(input) {
 		}
 		return true;
 	} catch (e) {
-		return false;
+		return e;
 	}	
 }
 
@@ -200,47 +204,63 @@ const requestListener = function(req, res) {
 	console.log('requestListener: url = ', url, 'method = ', method);
 
 	if (method === 'POST') {
-		// input format {sitesToTest: [http://www.google.com, http://cnn.com, http://espn.com], iterations: 10}
 		var input = '';
 		// need to generate unique testHandle
 		var testHandle = generateTestHandle();
 		req.on('error', function(err) {
 			console.log('Error: ', err.message);
 		});
-		req.on('data', function(chunck) {
+		req.on('data', function(chunk) {
 			input += chunk;
 		});	
 		req.on('end', function() {
-			console.log(input);
+			// console.log("input : ", input);
+			// console.log("validateInput(input) ---------> ", validateInput(input));
 			if (validateInput(input)) {
 				testInfo[testHandle] = {sites: input.sitesToTest, iterations: input.iterations, result: [], status: "started"};
 				testHandles.push(testHandle);
+				// console.log("inside server handle: ", testHandle);
+				// console.log("inside server testInfo: ", testInfo);
+				// console.log("inside server testHandles: ", testHandles);
 				// run the function on the input;
-				test(input.sitesToTest, input.iterations, function(result) {
-					saveTestResultToDisk(filepath, result);
-				});
+				// test(input.sitesToTest, input.iterations, function(result) {
+				// 	saveTestResultToDisk(filepath, result);
+				// });
+				res.writeHead(201, headers);
+				res.end(JSON.stringify({testHandle: testHandle, status: testInfo[testHandle].status}));
 			} else {
 				res.writeHead(406, headers);
 				res.end('Input format is not acceptable.');
 			}
 		});
-		res.writeHead(201, headers);
-		res.end({testInfo: testHandle, status: testInfo[testHandle].status});
 	} else if (method = 'GET') {
-		if (url === 'allTests') {
+		if (url === '/allTests') {
 			res.writeHead(200, headers);
 			res.end(JSON.stringify({handles: testHandles}));
-		} else if (testInfo[url] === undefined) {
-			response.writeHead(404, headers);
-			response.end('Cannot find the test with the testHandle = ' + url);
-		} else {
-			if (testHandles[url].status === "finished") {
-				res.writeHead(400, headers);
-				res.end(JSON.stringify(testInfo[url].result));
+		} else if (url === "/testStatus") {
+			var handle = req.data.testHandle;
+			if (testInfo[handle] === undefined) {
+				res.writeHead(404, headers);
+				res.end('Cannot find the test with the testHandle = ' + handle);
 			} else {
 				res.writeHead(200, headers);
-				res.end({testHandle: url, status: testInfo[url].status});
+				res.end({testHandle: handle, status: testInfo[handle].status});
 			}
+		} else if (url === "/testResults") {
+			var handle = req.data.testHandle;
+			if (testInfo[handle] === undefined) {
+				res.writeHead(404, headers);
+				res.end('Cannot find the test with the testHandle = ' + handle);
+			} else if (testInfo[handle].status === "finished") {
+				res.writeHead(200, headers);
+				res.end(JSON.stringify(testInfo[url].result));
+			} else {
+				res.writeHead(400, headers);
+				res.end();
+			}
+		} else {
+			res.writeHead(404, headers);
+			res.end('Invalid operation ' + url);
 		}
 	}
 }
