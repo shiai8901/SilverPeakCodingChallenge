@@ -1,9 +1,13 @@
 var readline = require('readline');
+var http = require('http');
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 });
 
+const hostname = "localhost";
+const port = 8080;
 
 /********* Build the client *********/
 var CLI = function() {
@@ -17,8 +21,43 @@ var CLI = function() {
 }
 
 CLI.prototype.testSites = function(sites, iterations) {
-	console.log("testSites: ", sites, iterations);
-	console.log("Test started. Test handle: <handle>");
+	var postData = JSON.stringify({
+	  sitesToTest: sites,
+	  iterations: iterations
+	});
+	console.log("testSites in client: ", JSON.parse(postData));
+
+	var options = {
+		hostname: hostname,
+		port: port,
+		path: '/testSites',
+		method: 'POST',
+		headers: {
+    		'Content-Type': 'application/x-www-form-urlencoded',
+    		'Content-Length': Buffer.byteLength(postData)
+		}
+	};
+
+	var req = http.request(options, (res) => {
+		// console.log(`STATUS: ${res.statusCode} \n`, ` HEADERS: ${JSON.stringify(res.headers)}`);
+		// res.setEncoding('utf8');
+		res.on('data', (chunk) => {
+			// console.log(`BODY: ${chunk}`);
+			console.log("test " + JSON.parse(chunk).status + ". Test handle: " + JSON.parse(chunk).testHandle);
+		});
+		res.on('end', () => {
+			console.log('No more data in response.');
+		});
+	});
+
+	req.on('error', (e) => {
+	  console.log(`problem with request: ${e.message}`);
+	});
+
+	// write data to request body
+	req.write(postData);
+	req.end();
+
 }
 
 CLI.prototype.getStatus = function(handle) {
