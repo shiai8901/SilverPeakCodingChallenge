@@ -250,8 +250,9 @@ const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
 	var queryObject = urlParser.parse(req.url,true).query;
 	var method = req.method;
-
-	console.log('requestListener: url = ', url, 'method = ', method, 'queryObject = ', queryObject.testHandle);
+	console.log('testInfo = ', testInfo);
+	console.log('testHandles = ', testHandles);
+	// console.log('requestListener: url = ', url, 'method = ', method, 'queryObject = ', queryObject.testHandle);
 
 	if (method === 'POST') {
 		var input = '';
@@ -269,12 +270,11 @@ const requestListener = function(req, res) {
 				testInfo[testHandle] = {sites: input.sitesToTest, iterations: input.iterations, result: [], status: "started"};
 				testHandles.push(testHandle);
 
-				// run the function on the input;
-				Promise.resolve(test(testHandle, input.sitesToTest, input.iterations))
+				Promise
+					.resolve(test(testHandle, input.sitesToTest, input.iterations))
 					.then(results => {
 						updateTestResult(testHandle, results);
-						updateTestStatus(testHandle, "finished");
-						
+						updateTestStatus(testHandle, "finished");						
 						saveTestResultToDisk(filepath, JSON.stringify({handle: testHandle, data: results}));
 					})
 					.then(data => {
@@ -284,14 +284,6 @@ const requestListener = function(req, res) {
 						console.log('reject: ', reject);
 					});
 
-
-
-				// test(testHandle, input.sitesToTest, input.iterations, function(value) {
-				// 	console.log('test value', value);
-				// 	saveTestResultToDisk(filepath, value, (data) => {
-				// 		console.log(data);
-				// 	});
-				// });
 				res.writeHead(201, headers);
 				res.end(JSON.stringify({testHandle: testHandle, status: testInfo[testHandle].status}));
 			} else {
@@ -302,7 +294,7 @@ const requestListener = function(req, res) {
 	} else if (method = 'GET') {
 		if (url === '/allTests') {
 			res.writeHead(200, headers);
-			res.end(JSON.stringify({handles: testHandles}));
+			res.end(JSON.stringify(testHandles));
 		} else if (url === "/testStatus") {
 			var handle = queryObject.testHandle;
 
@@ -320,7 +312,7 @@ const requestListener = function(req, res) {
 				res.end('Cannot find the test with the testHandle = ' + handle);
 			} else if (testInfo[handle].status === "finished") {
 				res.writeHead(200, headers);
-				res.end(JSON.stringify(testInfo[url].result));
+				res.end(JSON.stringify(testInfo[handle].result));
 			} else {
 				res.writeHead(400, headers);
 				res.end('test is in progress');
