@@ -255,25 +255,7 @@ var headers = {
 };
 
 const actions = {
-	'POST': function(req, res) {
-
-	},
-	'GET': function(req, res) {
-
-	}
-}
-
-function sendResponse(status, headers, res, data) {
-	res.writeHead(status, headers);
-	res.end(data);
-}
-
-const requestListener = function(req, res) {
-	var url = urlParser.parse(req.url).pathname;
-	var queryObject = urlParser.parse(req.url,true).query;
-	var method = req.method;
-	
-	if (method === 'POST') {
+	'POST': function(req, res, url, queryObject) {
 		var input = '';
 		var testHandle = generateTestHandle();
 		req.on('error', function(err) {
@@ -306,7 +288,8 @@ const requestListener = function(req, res) {
 				sendResponse(406, headers, res, 'Input format is not acceptable.');
 			}
 		});
-	} else if (method = 'GET') {
+	},
+	'GET': function(req, res, url, queryObject) {
 		if (url === '/allTests') {
 			res.writeHead(200, headers);
 			res.end(JSON.stringify(testHandles));
@@ -330,6 +313,24 @@ const requestListener = function(req, res) {
 		} else {
 			sendResponse(404, headers, res, 'Invalid operation ' + url);
 		}
+	}
+}
+
+function sendResponse(status, headers, res, data) {
+	res.writeHead(status, headers);
+	res.end(data);
+}
+
+const requestListener = function(req, res) {
+	var url = urlParser.parse(req.url).pathname;
+	var queryObject = urlParser.parse(req.url,true).query;
+	var method = req.method;
+	
+	var handler = actions[method];
+	if (handler) {
+		handler(req, res, url, queryObject);
+	} else {
+		sendResponse(404, headers, res, '');
 	}
 }
 
