@@ -16,6 +16,8 @@
 const http = require('http');
 const urlParser = require('url');
 const request = require('request');
+const fs = require('fs');
+
 
 const filepath = 'allTests.txt';
 const cleanDataTimeInterval = 24 * 60 * 60 * 1000;
@@ -35,10 +37,33 @@ function timer(milliseconds) {
 			removeTestResultFromDisk(filepath);
 			return;
 		} 
-	}, 1000);
+	}, milliseconds);
 }
 
 timer(nextClearDataTime);
+
+/**
+ * remove test result on memory every 24 hours
+ */
+function removeTestResultFromMemory(listOfItems) {
+	listOfItems.forEach((item) => {
+		if (Array.isArray(item)) {
+			item = [];
+		} else if (typeof item === 'object') {
+			item = {};
+		}
+	});
+	console.log('Data has been removed from memory');
+}
+
+/**
+ * remove test result on dist every 24 hours
+ */
+function removeTestResultFromDisk(filepath) {
+	fs.writeFile(filepath, '', function(){
+		console.log('Data has been removed from disk');
+	});
+}
 
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
@@ -65,7 +90,7 @@ function generateTestHandle() {
 function validateInput(input) {
 	try { 
 		input = JSON.parse(input);
-		console.log("input in validation --------> ", input);
+		// console.log("input in validation --------> ", input);
 		if (typeof input !== 'object' || 
 			input === null ||
 			Array.isArray(input) ||
@@ -100,46 +125,91 @@ function validateInput(input) {
  * @param {Number} iterations
  */
 function test(testHandle, sitesToTest, iterations, callback) {
-	
-	var promises = sitesToTest.map((url) => {
-		let startTestTime = (new Date()).getTime();
-		return {site: url, startTestTime: startTestTime, endTestTime: getURL(url, iterations, generateEndTime)};
+
+	// console.log('test -----> ', testHandle, sitesToTest, iterations, callback);
+	var promises = [];
+	sitesToTest.forEach((site) => {
+		var promise = new Promise((resolve, reject) => {
+			resolve(getURL(site, iterations, callback));
+		}); 		
+		promises.push(promise);
 	});
-
-	Promise.all(promises).then((result) => {
-		let save = {};
-		save[testHandle] = results;
-
-		updateTestStatus(testHandle, "finished");
-		updateTestResult(testHandle, result);
-		callback(save);
+	var results = [];
+	return Promise.all(promises).then((values) => {
+		values.forEach((site) => {
+			results.push(analyzeRawResults(site.url, iterations, site.testStartTime, site.respTimes));
+		});
+		return results;
+	})
+	.then((results) => {
+		// callback(results);
+		return results;
 	});
-
+		
 }
 
-function generateEndTime() {
-	return (new Date()).getTime();
+/**
+ * Calculate the max, min, avg resposne time, start test time and end test time
+ * @return [<site name>, <iterations>, <min resp time>, <max resp time>, <avg resp time>, <test start time>, <test end time>]
+ */
+function analyzeRawResults(url, iterations, testStartTime, timeArr) {
+	var respMin = Number.MAX_VALUE, 
+		respMax = Number.MIN_VALUE, 
+		respAvg = 0, 
+		testEndTime = timeArr[timeArr.length - 1], 
+		totalTime = 0;
+
+	for (var i = timeArr.length - 1; i > 0; i--) {
+		timeArr[i] = timeArr[i] - timeArr[i - 1];
+	}
+	timeArr[0] = timeArr[0] - testStartTime;
+	timeArr.forEach((time) => {
+		totalTime += time;
+		if (time < respMin) respMin = time;
+		if (time > respMax) respMax = time;
+	});
+	var result = {
+		site: url, 
+		avg: totalTime / timeArr.length, 
+		max: respMax, 
+		min: respMin, 
+		startTestTime: testStartTime, 
+		endTestTime: testEndTime,
+		iterations: iterations
+	};
+	return result;
 }
 
 function getURL(url, iterations, callback) {
-	var n = iterations;
-	var promises = [];		
-	var promise = request({
-			uri: url,
-			method: "GET",
-			timeout: 10000,
-			followRedirect: true,
-			maxRedirects: 10
-		}, function(error, response, body) {
-			// console.log(body);
-		});
-	while (n > 0) {
-		promises.push(promise);
-		n--;
-	}
+	var testStartTime = (new Date()).getTime();
+	var respTimes = [];
+	var count = 1;
 
-	return Promise.all(promises).then((values) => {
-		return callback();
+	var promises = [];
+
+	while (iterations > 0) {
+		var promise = new Promise((resolve, reject) => {
+		
+		http.get(url, (res) => {
+			res.on('data', (chunk) => { 
+				})
+				.on('end', () => { 
+					resolve(respTimes.push((new Date()).getTime()));
+				})
+				.on('error', (e) => { 
+					// console.log(`problem with response: ${e}`); 
+				});
+			})
+			.on('error', (e) => {
+					// console.log(`problem with request: ${e}`);
+			})
+			.end();
+		}); 
+		promises.push(promise);
+		iterations--;
+	}
+	return Promise.all(promises).then((values) => {		
+		return {url: url, testStartTime: testStartTime, respTimes: respTimes};
 	});
 }
 /**
@@ -163,30 +233,10 @@ function updateTestResult(testHandle, result) {
 /**
  * save test result to disk
  */
-function saveTestResultToDisk(filepath, result, callback) {
-	fs.appendFile(filepath, result + '\n', function(err, file) {
-		callback();
+function saveTestResultToDisk(filepath, result) {
+	fs.appendFile(filepath, result + '\n', (err) => {
+		if (err) return err;
 	});
-}
-
-/**
- * remove test result on memory every 24 hours
- */
-function removeTestResultFromMemory(listOfItems) {
-	listOfItems.forEach((item) => {
-		if (Array.isArray(item)) {
-			item = [];
-		} else if (typeof item === 'object') {
-			item = {};
-		}
-	});
-}
-
-/**
- * remove test result on dist every 24 hours
- */
-function removeTestResultFromDisk(filepath) {
-	fs.writeFile(filepath, '', function(){console.log('done')})
 }
 
 var headers = {
@@ -199,10 +249,9 @@ var headers = {
 
 const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
+	var queryObject = urlParser.parse(req.url,true).query;
 	var method = req.method;
-
-	console.log('requestListener: url = ', url, 'method = ', method);
-
+	
 	if (method === 'POST') {
 		var input = '';
 		// need to generate unique testHandle
@@ -214,18 +263,25 @@ const requestListener = function(req, res) {
 			input += chunk;
 		});	
 		req.on('end', function() {
-			// console.log("input : ", input);
-			// console.log("validateInput(input) ---------> ", validateInput(input));
 			if (validateInput(input)) {
+				input = JSON.parse(input);
 				testInfo[testHandle] = {sites: input.sitesToTest, iterations: input.iterations, result: [], status: "started"};
 				testHandles.push(testHandle);
-				// console.log("inside server handle: ", testHandle);
-				// console.log("inside server testInfo: ", testInfo);
-				// console.log("inside server testHandles: ", testHandles);
-				// run the function on the input;
-				// test(input.sitesToTest, input.iterations, function(result) {
-				// 	saveTestResultToDisk(filepath, result);
-				// });
+
+				Promise
+					.resolve(test(testHandle, input.sitesToTest, input.iterations))
+					.then(results => {
+						updateTestResult(testHandle, results);
+						updateTestStatus(testHandle, "finished");						
+						saveTestResultToDisk(filepath, JSON.stringify({handle: testHandle, data: results}));
+					})
+					.then(data => {
+						console.log('data: ', data);
+					})
+					.catch(reject => {
+						console.log('reject: ', reject);
+					});
+
 				res.writeHead(201, headers);
 				res.end(JSON.stringify({testHandle: testHandle, status: testInfo[testHandle].status}));
 			} else {
@@ -236,27 +292,28 @@ const requestListener = function(req, res) {
 	} else if (method = 'GET') {
 		if (url === '/allTests') {
 			res.writeHead(200, headers);
-			res.end(JSON.stringify({handles: testHandles}));
+			res.end(JSON.stringify(testHandles));
 		} else if (url === "/testStatus") {
-			var handle = req.data.testHandle;
+			var handle = queryObject.testHandle;
+
 			if (testInfo[handle] === undefined) {
 				res.writeHead(404, headers);
 				res.end('Cannot find the test with the testHandle = ' + handle);
 			} else {
 				res.writeHead(200, headers);
-				res.end({testHandle: handle, status: testInfo[handle].status});
+				res.end(JSON.stringify({testHandle: handle, status: testInfo[handle].status}));
 			}
 		} else if (url === "/testResults") {
-			var handle = req.data.testHandle;
+			var handle = queryObject.testHandle;
 			if (testInfo[handle] === undefined) {
 				res.writeHead(404, headers);
 				res.end('Cannot find the test with the testHandle = ' + handle);
 			} else if (testInfo[handle].status === "finished") {
 				res.writeHead(200, headers);
-				res.end(JSON.stringify(testInfo[url].result));
+				res.end(JSON.stringify(testInfo[handle].result));
 			} else {
 				res.writeHead(400, headers);
-				res.end();
+				res.end('test is in progress');
 			}
 		} else {
 			res.writeHead(404, headers);
@@ -264,16 +321,6 @@ const requestListener = function(req, res) {
 		}
 	}
 }
-
-
-
-
-
-
-// const requestListener = function (req, res) {
-//   res.writeHead(200);
-//   res.end('Hello, World!\n');
-// }
 
 const server = http.createServer(requestListener);
 console.log("listening on 8080");

@@ -1,9 +1,10 @@
 var readline = require('readline');
 var http = require('http');
+var Table = require('cli-table');
 
 const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
+	input: process.stdin,
+	output: process.stdout
 });
 
 const hostname = "localhost";
@@ -22,10 +23,9 @@ var CLI = function() {
 
 CLI.prototype.testSites = function(sites, iterations) {
 	var postData = JSON.stringify({
-	  sitesToTest: sites,
-	  iterations: iterations
+		sitesToTest: sites,
+		iterations: iterations
 	});
-	console.log("testSites in client: ", JSON.parse(postData));
 
 	var options = {
 		hostname: hostname,
@@ -38,58 +38,75 @@ CLI.prototype.testSites = function(sites, iterations) {
 		}
 	};
 
-	var req = http.request(options, (res) => {
-		res.on('data', (chunk) => {
-			console.log("test " + JSON.parse(chunk).status + ". Test handle: " + JSON.parse(chunk).testHandle);
+	return Promise.resolve(this.POSTRequest(options, postData));
+}
+CLI.prototype.POSTRequest = function(options, postData) {
+	var promise = new Promise((resolve, reject) => {
+		var req = http.request(options, (res) => {
+			res.on('data', (chunk) => {
+			})
+			.on('end', () => { 
+				resolve('No more data in response.'); 
+			});
 		});
-		res.on('end', () => {
-			console.log('No more data in response.');
+
+		req.on('error', (e) => {
+		  console.log(`problem with request: ${e.message}`);
 		});
+
+		req.write(postData);
+		req.end();		
 	});
+	return Promise.resolve(promise);
+}
 
-	req.on('error', (e) => {
-	  console.log(`problem with request: ${e.message}`);
+CLI.prototype.GETRequest = function(options) {
+	var str = '';
+	var promise = new Promise((resolve, reject) => {
+		http.request(options, (res) => {
+			res.on('data', (chunk) => { 
+				str += chunk; 
+				})
+				.on('end', () => { 
+					resolve(str);
+				})
+				.on('error', (e) => { 
+					console.log(`problem with response: ${e.message}`); 
+				});
+		})
+		.on('error', (e) => {
+				console.log(`problem with request: ${e.message}`);
+		})
+		.end();		
 	});
-
-	req.write(postData);
-	req.end();
-
+	return Promise.resolve(promise).then((str) => {
+		return str;
+	});
 }
 
 CLI.prototype.getStatus = function(handle) {
-	console.log("getStatus: ", handle);
 	var options = {
-	  hostname: hostname,
-	  port: port,
-	  path: '/getStatus?' + handle,
-	  method: 'GET'
+		hostname: hostname,
+		port: port,
+		path: '/testStatus?testHandle=' + handle,
+		method: 'GET'
 	};
 
-	http.request(options, (res) => {
-		var str = '';
-
-		res.on('data', function (chunk) {
-			str += chunk;
-		});
-		res.on('end', function () {
-			console.log(str);
-		});
-		res.on('error', (e) => {
-			console.log(`problem with response: ${e.message}`);
-		});
-	})
-	.on('error', (e) => {
-			console.log(`problem with request: ${e.message}`);
-		})
-	.end();
+	return Promise.resolve(this.GETRequest(options));
 }
 
 CLI.prototype.getResults = function(handle) {
-	console.log("getResults: ", handle);
+	var options = {
+		hostname: hostname,
+		port: port,
+		path: '/testResults?testHandle=' + handle,
+		method: 'GET'
+	};
+
+	return Promise.resolve(this.GETRequest(options));
 }
 
 CLI.prototype.getAll = function() {
-	console.log("getAll");
 	var options = {
 		hostname: hostname,
 		port: port,
@@ -97,23 +114,10 @@ CLI.prototype.getAll = function() {
 		method: 'GET'
 	};
 
-	http.request(options, (res) => {
-		var str = '';
-
-		res.on('data', function (chunk) {
-			str += chunk;
+	return Promise.resolve(this.GETRequest(options))
+		.then((results) => {
+			return "All handles " + results
 		});
-		res.on('end', function () {
-			console.log("All handles: " + JSON.parse(str).handles);
-		});
-		res.on('error', (e) => {
-			console.log(`problem with response: ${e.message}`);
-		});
-	})
-	.on('error', (e) => {
-			console.log(`problem with request: ${e.message}`);
-		})
-	.end();
 }
 
 CLI.prototype.help = function() {
@@ -122,6 +126,17 @@ CLI.prototype.help = function() {
 		helpInfo += "* " + operation + " => " + this.operations[operation] + "\n";
 	}
 	return helpInfo;
+}
+
+CLI.prototype.printTable = function(arr) {
+	arr = JSON.parse(arr);
+	var table = new Table({
+		head: ['site', 'iterations', 'minRespTime', 'maxRespTime', 'avgRespTime', 'testStartTime', 'testEndTime'],
+	});
+	arr.forEach((e) => {
+		table.push([e.site, e.iterations, e.min, e.max, e.avg, e.startTestTime, e.endTestTime]);
+	});
+	return table.toString();
 }
 
 /********* Start the client *********/
@@ -140,16 +155,28 @@ var processInput = function(string) {
 		var sites = stringArr.slice(1, stringArr.length - 1);
 		var iterations = +stringArr[stringArr.length - 1];
 		if (!Number.isInteger(iterations) || iterations < 1) return false;
-		cli.testSites(sites, iterations);
+		Promise.resolve(cli.testSites(sites, iterations))
+			.then((message) => {
+				console.log(message);
+			});
 		return true;
 	} else if (stringArr[0] === "getStatus" && stringArr.length === 2) {
-		cli.getStatus(stringArr[1]);
+		Promise.resolve(cli.getStatus(stringArr[1]))
+			.then((results) => {
+				console.log(results);
+			});
 		return true;
 	} else if (stringArr[0] === "getResults" && stringArr.length === 2) {
-		cli.getResults(stringArr[1]);
+		Promise.resolve(cli.getResults(stringArr[1]))
+			.then((results) => {
+				console.log(cli.printTable(results));
+			});
 		return true;
 	} else if (stringArr[0] === "getAll") {
-		cli.getAll();
+		Promise.resolve(cli.getAll())
+			.then((results) => {
+				console.log(results);
+			});
 		return true;
 	} else if (stringArr[0] === "help") {
 		console.log(cli.help());
@@ -161,7 +188,6 @@ var processInput = function(string) {
 
 var waitForInput = function() {
 	rl.question('> ', function(answer) {
-		console.log("waitForInput: ", answer);
 		if (processInput(answer)) {
 			waitForInput();
 		} else {
