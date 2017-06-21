@@ -24,6 +24,11 @@ const cleanDataTimeInterval = 24 * 60 * 60 * 1000;
 let nextClearDataTime = (new Date()).getTime() + cleanDataTimeInterval
 let countdown;
 
+/**
+ * invoke removeTestResultFromMemory(listOfItems), removeTestResultFromDisk(filepath) repeatedly
+ * @param {number} milliseconds: time interval
+ * @param {array} funcs: functions to be invoked
+ */
 function timer(milliseconds) {
 	clearInterval(countdown);
 	
@@ -43,7 +48,8 @@ function timer(milliseconds) {
 timer(nextClearDataTime);
 
 /**
- * remove test result on memory every 24 hours
+ * remove data in <listOfItems> on memory
+ * @param {array} listOfItems
  */
 function removeTestResultFromMemory(listOfItems) {
 	listOfItems.forEach((item) => {
@@ -57,7 +63,7 @@ function removeTestResultFromMemory(listOfItems) {
 }
 
 /**
- * remove test result on dist every 24 hours
+ * remove data on <filepath>
  */
 function removeTestResultFromDisk(filepath) {
 	fs.writeFile(filepath, '', function(){
@@ -83,7 +89,7 @@ function generateTestHandle() {
 }
 
 /**
- * validate input string
+ * validate if the input string is a valid url
  * @param {String} input
  * @return {Boolean} is validate input
  */
@@ -120,13 +126,13 @@ function validateInput(input) {
 }
 
 /**
- * [{site: string, avg: number, max: number, min: number, startTestTime: string, endTestTime: string, interations: number}]
+ * get the response times for a list of sites for <iterations> times
  * @param {Array} sitesToTest
  * @param {Number} iterations
+ * @param {Number} testHandle
+ * @return {Array} [{site: string, avg: number, max: number, min: number, startTestTime: string, endTestTime: string, interations: number}]
  */
 function test(testHandle, sitesToTest, iterations, callback) {
-
-	// console.log('test -----> ', testHandle, sitesToTest, iterations, callback);
 	var promises = [];
 	sitesToTest.forEach((site) => {
 		var promise = new Promise((resolve, reject) => {
@@ -142,14 +148,12 @@ function test(testHandle, sitesToTest, iterations, callback) {
 		return results;
 	})
 	.then((results) => {
-		// callback(results);
 		return results;
-	});
-		
+	});		
 }
 
 /**
- * Calculate the max, min, avg resposne time, start test time and end test time
+ * Calculate the max, min, avg resposne time, start test time and end test time, and return the result in required format
  * @return [<site name>, <iterations>, <min resp time>, <max resp time>, <avg resp time>, <test start time>, <test end time>]
  */
 function analyzeRawResults(url, iterations, testStartTime, timeArr) {
@@ -180,11 +184,13 @@ function analyzeRawResults(url, iterations, testStartTime, timeArr) {
 	return result;
 }
 
-function getURL(url, iterations, callback) {
+/**
+ * get the response time for one single url for <itertations> time
+ * @return {object} {url: url, testStartTime: testStartTime, respTimes: respTimes}
+ */
+function getURL(url, iterations) {
 	var testStartTime = (new Date()).getTime();
 	var respTimes = [];
-	var count = 1;
-
 	var promises = [];
 
 	while (iterations > 0) {
@@ -212,8 +218,9 @@ function getURL(url, iterations, callback) {
 		return {url: url, testStartTime: testStartTime, respTimes: respTimes};
 	});
 }
+
 /**
- * update test status when test is completed
+ * update test status
  * @param {String} testHandle
  * @param {String} status
  */
@@ -233,8 +240,8 @@ function updateTestResult(testHandle, result) {
 /**
  * save test result to disk
  */
-function saveTestResultToDisk(filepath, result) {
-	fs.appendFile(filepath, result + '\n', (err) => {
+function saveTestResultToDisk(filepath, data) {
+	fs.appendFile(filepath, data + '\n', (err) => {
 		if (err) return err;
 	});
 }
@@ -247,6 +254,20 @@ var headers = {
   'Content-Type': 'application/json'
 };
 
+const actions = {
+	'POST': function(req, res) {
+
+	},
+	'GET': function(req, res) {
+
+	}
+}
+
+function sendResponse(status, headers, res, data) {
+	res.writeHead(status, headers);
+	res.end(data);
+}
+
 const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
 	var queryObject = urlParser.parse(req.url,true).query;
@@ -254,7 +275,6 @@ const requestListener = function(req, res) {
 	
 	if (method === 'POST') {
 		var input = '';
-		// need to generate unique testHandle
 		var testHandle = generateTestHandle();
 		req.on('error', function(err) {
 			console.log('Error: ', err.message);
@@ -281,12 +301,9 @@ const requestListener = function(req, res) {
 					.catch(reject => {
 						console.log('reject: ', reject);
 					});
-
-				res.writeHead(201, headers);
-				res.end(JSON.stringify({testHandle: testHandle, status: testInfo[testHandle].status}));
+				sendResponse(201, headers, res, JSON.stringify({testHandle: testHandle, status: testInfo[testHandle].status}));
 			} else {
-				res.writeHead(406, headers);
-				res.end('Input format is not acceptable.');
+				sendResponse(406, headers, res, 'Input format is not acceptable.');
 			}
 		});
 	} else if (method = 'GET') {
@@ -297,27 +314,21 @@ const requestListener = function(req, res) {
 			var handle = queryObject.testHandle;
 
 			if (testInfo[handle] === undefined) {
-				res.writeHead(404, headers);
-				res.end('Cannot find the test with the testHandle = ' + handle);
+				sendResponse(404, headers, res, 'Cannot find the test with the testHandle = ' + handle);
 			} else {
-				res.writeHead(200, headers);
-				res.end(JSON.stringify({testHandle: handle, status: testInfo[handle].status}));
+				sendResponse(200, headers, res, JSON.stringify({testHandle: handle, status: testInfo[handle].status}));
 			}
 		} else if (url === "/testResults") {
 			var handle = queryObject.testHandle;
 			if (testInfo[handle] === undefined) {
-				res.writeHead(404, headers);
-				res.end('Cannot find the test with the testHandle = ' + handle);
+				sendResponse(404, headers, res, 'Cannot find the test with the testHandle = ' + handle);
 			} else if (testInfo[handle].status === "finished") {
-				res.writeHead(200, headers);
-				res.end(JSON.stringify(testInfo[handle].result));
+				sendResponse(200, headers, res, JSON.stringify(testInfo[handle].result));
 			} else {
-				res.writeHead(400, headers);
-				res.end('test is in progress');
+				sendResponse(400, headers, res, 'test is in progress');
 			}
 		} else {
-			res.writeHead(404, headers);
-			res.end('Invalid operation ' + url);
+			sendResponse(404, headers, res, 'Invalid operation ' + url);
 		}
 	}
 }
