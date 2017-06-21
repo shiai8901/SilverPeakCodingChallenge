@@ -37,10 +37,33 @@ function timer(milliseconds) {
 			removeTestResultFromDisk(filepath);
 			return;
 		} 
-	}, 1000);
+	}, milliseconds);
 }
 
 timer(nextClearDataTime);
+
+/**
+ * remove test result on memory every 24 hours
+ */
+function removeTestResultFromMemory(listOfItems) {
+	listOfItems.forEach((item) => {
+		if (Array.isArray(item)) {
+			item = [];
+		} else if (typeof item === 'object') {
+			item = {};
+		}
+	});
+	console.log('Data has been removed from memory');
+}
+
+/**
+ * remove test result on dist every 24 hours
+ */
+function removeTestResultFromDisk(filepath) {
+	fs.writeFile(filepath, '', function(){
+		console.log('Data has been removed from disk');
+	});
+}
 
 // format is {testHandleName: {sites: [], iterations: Number, result: [], status: ""}}
 var testInfo = {};
@@ -211,31 +234,9 @@ function updateTestResult(testHandle, result) {
  * save test result to disk
  */
 function saveTestResultToDisk(filepath, result) {
-
-	fs.appendFile(filepath, result + '\n', (err, file) => {
+	fs.appendFile(filepath, result + '\n', (err) => {
 		if (err) return err;
-		if (file) return file;
 	});
-}
-
-/**
- * remove test result on memory every 24 hours
- */
-function removeTestResultFromMemory(listOfItems) {
-	listOfItems.forEach((item) => {
-		if (Array.isArray(item)) {
-			item = [];
-		} else if (typeof item === 'object') {
-			item = {};
-		}
-	});
-}
-
-/**
- * remove test result on dist every 24 hours
- */
-function removeTestResultFromDisk(filepath) {
-	fs.writeFile(filepath, '', function(){console.log('done')})
 }
 
 var headers = {
@@ -250,10 +251,7 @@ const requestListener = function(req, res) {
 	var url = urlParser.parse(req.url).pathname;
 	var queryObject = urlParser.parse(req.url,true).query;
 	var method = req.method;
-	console.log('testInfo = ', testInfo);
-	console.log('testHandles = ', testHandles);
-	// console.log('requestListener: url = ', url, 'method = ', method, 'queryObject = ', queryObject.testHandle);
-
+	
 	if (method === 'POST') {
 		var input = '';
 		// need to generate unique testHandle
@@ -323,16 +321,6 @@ const requestListener = function(req, res) {
 		}
 	}
 }
-
-
-
-
-
-
-// const requestListener = function (req, res) {
-//   res.writeHead(200);
-//   res.end('Hello, World!\n');
-// }
 
 const server = http.createServer(requestListener);
 console.log("listening on 8080");

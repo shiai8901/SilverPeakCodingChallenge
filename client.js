@@ -155,7 +155,6 @@ var processInput = function(string) {
 		var sites = stringArr.slice(1, stringArr.length - 1);
 		var iterations = +stringArr[stringArr.length - 1];
 		if (!Number.isInteger(iterations) || iterations < 1) return false;
-		// cli.testSites(sites, iterations);
 		Promise.resolve(cli.testSites(sites, iterations))
 			.then((message) => {
 				console.log(message);
