@@ -1,5 +1,7 @@
 var readline = require('readline');
 var http = require('http');
+// const https = require('https');
+// const ca = fs.readFileSync(path.join(__dirname, 'my-private-root-ca.cert.pem')
 var Table = require('cli-table');
 
 const rl = readline.createInterface({
@@ -42,7 +44,7 @@ CLI.prototype.testSites = function(sites, iterations) {
 }
 CLI.prototype.POSTRequest = function(options, postData) {
 	var promise = new Promise((resolve, reject) => {
-		var req = http.request(options, (res) => {
+		var req = https.request(options, (res) => {
 			res.on('data', (chunk) => {
 			})
 			.on('end', () => { 
@@ -63,7 +65,7 @@ CLI.prototype.POSTRequest = function(options, postData) {
 CLI.prototype.GETRequest = function(options) {
 	var str = '';
 	var promise = new Promise((resolve, reject) => {
-		http.request(options, (res) => {
+		https.request(options, (res) => {
 			res.on('data', (chunk) => { 
 				str += chunk; 
 				})

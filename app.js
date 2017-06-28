@@ -1,16 +1,13 @@
-// var https = require('https');
-// var fs = require('fs');
+// const https = require('https');
+// const fs = require('fs');
 
-// var options = {
-//   key: fs.readFileSync('key.pem'),
-//   cert: fs.readFileSync('cert.pem')
+// const options = {
+//   key: fs.readFileSync('client-key.pem'),
+//   cert: fs.readFileSync('client-cert.pem')
 // };
 
-// var a = https.createServer(options, function (req, res) {
-//   res.writeHead(200);
-//   res.end("hello world\n");
-//   console.log('listen to 8000');
-// }).listen(8080);
+// console.log("options ---------->", options);
+
 
 
 const http = require('http');
@@ -334,6 +331,11 @@ const requestListener = function(req, res) {
 	}
 }
 
+
+
+// const server = https.createServer(options, function(req, res) {
+// console.log("listening on 8080");
+// 	console.log(req);
+// });
 const server = http.createServer(requestListener);
-console.log("listening on 8080");
 server.listen(8080);
